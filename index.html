@@ -1140,6 +1140,24 @@ p { margin: 0; }
           '<g transform="translate(50 46)">' + s + '<circle r="2" fill="' + V1 + '"/><circle cx="-0.6" cy="-0.6" r="0.7" fill="' + V4 + '"/></g>';
       }
     },
+    gerbera: {
+      nombre: 'Gerbera', color: '#F2734A',
+      dibujar: function (c) {
+        var gp = gid(), gp2 = gid(), gc = gid(), gt = gid(), ha = gid(), hb = gid(), c2 = shade(c, -0.22);
+        return '<defs>' + gradPetalo(gp, c) + gradPetalo(gp2, shade(c, -0.1)) + gradRadial(gc, '#6B3A1E', '#2E1A0D', 42, 40) + gradTallo(gt) + gradHoja(ha) + gradHoja(hb, true) + '</defs>' +
+          tallo('M50 160 C54 126 46 100 50 60', gt, 3.8) +
+          hoja(50, 128, 20, 110, 7, ha, 0.3) + hoja(50, 142, 80, 128, 7, hb, -0.3) +
+          '<g transform="translate(50 44)">' +
+          // dos coronas de pétalos finos (la de atrás más oscura y girada) y una corona corta interior
+          anillo(22, 11, 26, 3.4, 'url(#' + gp2 + ')', 8.2, { punta: 0.85 }) +
+          anillo(22, 10, 27, 3.6, 'url(#' + gp + ')', 0, { punta: 0.85, vena: c2 }) +
+          anillo(18, 6, 14, 3, shade(c, -0.18), 10, { punta: 0.8 }) +
+          '<circle r="9" fill="url(#' + gc + ')"/>' +
+          (function () { var r = ''; for (var i = 0; i < 40; i++) { var a = i * 137.508 * Math.PI / 180, rr = Math.sqrt(i / 40) * 7.5; r += '<circle cx="' + (Math.cos(a) * rr).toFixed(1) + '" cy="' + (Math.sin(a) * rr).toFixed(1) + '" r="' + (0.7 + rr / 7.5 * 0.6).toFixed(1) + '" fill="' + (rr > 5.5 ? shade(c, 0.1) : '#8A5A2B') + '" opacity=".8"/>'; } return r; })() +
+          '<circle r="2.4" fill="#F2D27A"/>' +
+          '</g>';
+      }
+    },
     eucalipto: {
       nombre: 'Eucalipto', color: '#8FAF93',
       dibujar: function (c) {
@@ -1180,7 +1198,7 @@ p { margin: 0; }
       }
     }
   };
-  var ORDEN = ['rosa', 'peonia', 'tulipan', 'ranunculo', 'margarita', 'lirio', 'girasol', 'lavanda', 'eucalipto', 'gipsofila'];
+  var ORDEN = ['rosa', 'peonia', 'tulipan', 'ranunculo', 'gerbera', 'margarita', 'lirio', 'girasol', 'lavanda', 'eucalipto', 'gipsofila'];
 
   global.FloreceFlores = { FLORES: FLORES, ORDEN: ORDEN, shade: shade, mezclar: mezclar };
 })(window);
@@ -2135,7 +2153,7 @@ window.FLORECE_FOTOS={};window.FLORECE_FONDOS={"amanecer": {"data": "data:image/
   var PLANTILLAS = [
     { id: 'blanco', nombre: 'En blanco', desc: 'El ramo básico y sin texto, para armarlo a tu gusto.' },
     { id: 'cumple', nombre: 'Cumpleaños', desc: 'Caja con cinta, girasoles y un mensaje festivo.', apertura: 'caja', foto: 'girasoles', marco: 'print',
-      flores: [['girasol', '#F3B73B'], ['ranunculo', '#F5B57A'], ['peonia', '#F6B8C6'], ['tulipan', '#F28C8C'], ['margarita', '#FFF7EC'], ['gipsofila', '#FFFFFF'], ['eucalipto', '#8FAF93']],
+      flores: [['girasol', '#F3B73B'], ['gerbera', '#F2734A'], ['ranunculo', '#F5B57A'], ['peonia', '#F6B8C6'], ['tulipan', '#F28C8C'], ['margarita', '#FFF7EC'], ['gipsofila', '#FFFFFF'], ['eucalipto', '#8FAF93']],
       papel: 'blanco', cinta: '#C9A45C', fondo: 'amanecer', estilo: 'moderno', titulo: '¡Feliz cumpleaños!',
       texto: 'Hoy celebramos que existes. Que este nuevo año te encuentre riendo mucho, soñando en grande y con gente que te quiere al lado.\n\nGracias por ser parte de mi vida. ¡Feliz cumpleaños!',
       stickers: [{ t: 'estrella', x: 24, y: 22, r: -14, s: 1 }, { t: 'chispa', x: 78, y: 18, r: 10, s: .9 }] },
