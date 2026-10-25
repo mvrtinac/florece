@@ -3053,10 +3053,19 @@ window.FLORECE_FOTOS={};window.FLORECE_FONDOS={"amanecer": {"data": "data:image/
     return '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n' +
       '<title>' + esc(titulo) + '</title>\n<meta name="theme-color" content="#FBF5EC">\n<meta name="robots" content="noindex">\n<link rel="icon" href="' + icono + '">\n' +
       '<style>' + fuentes + '</style>\n<style>' + pcss + '</style>\n' +
-      '<style>html,body{margin:0;height:100%;background:#FBF5EC;overflow:hidden}#regalo{position:fixed;inset:0}</style>\n</head>\n<body>\n<div id="regalo"></div>\n' +
+      '<style>html,body{margin:0;height:100%;background:#FBF5EC;overflow:hidden}#regalo{position:fixed;inset:0}#sinjs{position:fixed;inset:0;overflow:auto;padding:28px 22px;box-sizing:border-box;font-family:Poppins,system-ui,sans-serif;color:#2A2823;background:linear-gradient(170deg,#FFF0E1,#FBD9DF 48%,#E9DDF5)}#sinjs .c{max-width:420px;margin:0 auto;background:rgba(255,253,248,.92);border-radius:24px;padding:26px 22px;box-shadow:0 18px 40px rgba(40,30,20,.14)}#sinjs .e{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#9A938A;margin:0 0 6px}#sinjs h1{font-family:Lora,Georgia,serif;font-style:italic;font-weight:400;font-size:34px;margin:0 0 14px;line-height:1.1}#sinjs h2{font-family:Lora,Georgia,serif;font-size:21px;margin:0 0 8px}#sinjs p{font-size:15px;line-height:1.6;margin:0 0 12px;white-space:pre-wrap}#sinjs .a{margin-top:18px;padding:14px;border-radius:14px;background:#FFF5E3;border:1px solid #F3DFB8;font-size:13px;line-height:1.5;color:#8A5A1B}</style>\n</head>\n<body>\n<div id="regalo">' + htmlSinJs(g) + '</div>\n' +
       '<scr' + 'ipt>' + pjs + '<\/scr' + 'ipt>\n' +
       '<scr' + 'ipt>var REGALO=' + json + ';FlorecePlayer.mount(document.getElementById("regalo"),REGALO,{});<\/scr' + 'ipt>\n' +
       '<!' + '-- Hecho con Florece --' + '>\n</body>\n</html>';
+  }
+  // lo que se ve si el teléfono abre el archivo en un visor sin JavaScript (WhatsApp, correo)
+  function htmlSinJs(g) {
+    var m = g.mensaje || {};
+    return '<div id="sinjs"><div class="c"><p class="e">Un regalo para</p><h1>' + esc(nombreDe(g)) + '</h1>' +
+      ((m.titulo || '').trim() ? '<h2>' + esc(m.titulo.trim()) + '</h2>' : '') +
+      ((m.texto || '').trim() ? '<p>' + esc(m.texto.trim()) + '</p>' : '') +
+      ((g.de || m.firma || '').trim() ? '<p style="text-align:right;font-style:italic;color:#2E5A45">' + esc((g.de || m.firma).trim()) + '</p>' : '') +
+      '<div class="a"><b>Este regalo tiene flores, animaciones' + (g.fotos && g.fotos.length ? ', fotos' : '') + (g.musica && g.musica.data ? ' y música' : '') + '.</b> Tu teléfono lo abrió en un visor simple. Para verlo completo, ábrelo con <b>Chrome</b> o <b>Safari</b>: toca el menú (⋮ o Compartir) y elige «Abrir con» o «Abrir en el navegador». Si te llegó un link, úsalo directamente.</div></div></div>';
   }
   function validarParaExportar(g) {
     if (g.candado.activo && !/^\d{4}$/.test(g.candado.clave)) {

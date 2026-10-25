@@ -2,7 +2,7 @@
    Estrategia "red primero, caché de respaldo": cuando hay internet se baja
    siempre la versión más nueva (así no se pega la caché de GitHub Pages),
    y cuando no hay, se sirve lo último guardado. */
-var VERSION = 'florece-20261024-2142';
+var VERSION = 'florece-20261024-2214';
 var ARCHIVOS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', function (e) {
