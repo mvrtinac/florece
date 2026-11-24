@@ -47,9 +47,11 @@ h1, h2, p { margin: 0; }
 .tarjeta {
   display: flex; gap: 14px; align-items: flex-start; min-height: 128px; padding: 14px 16px;
   background: var(--papel2); border: 1.6px solid var(--tinta); border-radius: 14px 20px 16px 22px;
-  transition: opacity .4s ease, transform .4s ease;
+  transition: opacity .8s ease, transform .8s ease;
 }
 .tarjeta.oculta { opacity: 0; transform: translateY(8px); }
+.fecha.late { animation: late 1s ease; }
+@keyframes late { 0% { transform: scale(1); } 35% { transform: scale(1.13); } 100% { transform: scale(1); } }
 .tarjeta .cuerpo { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .cuando { font: 500 11px/1.2 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--tinta2); }
 .tarjeta h2 { font: 600 21px/1.2 var(--serif); letter-spacing: -.005em; }
@@ -82,7 +84,7 @@ h1, h2, p { margin: 0; }
 .flota { animation: flota 4.6s ease-in-out infinite; }
 .regando .flota { animation: none; }
 @keyframes flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.8px); } }
-@media (prefers-reduced-motion: reduce) { .flota { animation: none; } .tarjeta { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .flota, .fecha.late { animation: none; } .tarjeta { transition: none; } }
 noscript p { padding: 24px; text-align: center; }
 </style>
 </head>
@@ -405,7 +407,7 @@ noscript p { padding: 24px; text-align: center; }
     g += '<ellipse cx="-4" cy="9" rx="2.4" ry="5" fill="#fff" opacity=".35"/>';
     return g + '</g>';
   }
-  var CAN_HOME = { x: 161, y: 108, r: 0 }, CAN_POUR = { x: 149, y: 106, r: -26 }, CAN_TIP = { x: -40, y: -12 };
+  var CAN_HOME = { x: 161, y: 108, r: 0 }, CAN_TIP = { x: -40, y: -12 };
 
   /* ---------- estado y animación ---------- */
   var P = REGALO.paradas, N = P.length, MS = P.map(function (p) { return fechaMs(p.fecha); });
@@ -417,7 +419,7 @@ noscript p { padding: 24px; text-align: center; }
   var RECORTE = '<defs><clipPath id="recorte"><rect x="1.8" y="1.8" width="196.4" height="236.6"/></clipPath></defs>';
   $('svg-fondo').innerHTML = RECORTE + '<g clip-path="url(#recorte)">' + fondoSvg() + '</g>';
   $('svg-frente').innerHTML = frenteSvg();
-  svgFx.innerHTML = '<g id="regadera" transform="translate(' + CAN_HOME.x + ' ' + CAN_HOME.y + ')">' + regaderaSvg() + '</g><g id="gotas"></g>';
+  svgFx.innerHTML = '<g id="regadera" transform="translate(' + CAN_HOME.x + ' ' + CAN_HOME.y + ')">' + regaderaSvg() + '</g><g id="gotas"></g><g id="brillos"></g>';
   var can = $('regadera'), capaGotas = $('gotas');
   var GOTA = 'M0 -3 C1.7 -.5 2.1 1 0 2.3 C-2.1 1 -1.7 -.5 0 -3Z';
   var gotas = [], salpicaduras = [];
@@ -433,20 +435,38 @@ noscript p { padding: 24px; text-align: center; }
   }
 
   var humedadBase = function (t) { return .12 + .22 * t; };
-  function pintar(t, humedad) {
+  function pintar(t, humedad, sway) {
     tAhora = t;
-    svgPlanta.innerHTML = dibujarPlanta(t, humedad);
+    var dib = dibujarPlanta(t, humedad);
+    // la planta se mece un poco mientras la riegan
+    if (sway) dib = '<g transform="translate(100 ' + LAY.gy + ') rotate(' + f(sway.a) + ') scale(1 ' + f(sway.s) + ') translate(-100 ' + (-LAY.gy) + ')">' + dib + '</g>';
+    svgPlanta.innerHTML = dib;
     // la fecha corre entre una parada y la siguiente
     var k = 0; for (var i = 0; i < N - 1; i++) if (tDe(i) <= t + 1e-6) k = i;
     var a = tDe(k), b = tDe(Math.min(k + 1, N - 1)), fr = b > a ? clamp((t - a) / (b - a)) : 0;
     $('fecha').textContent = fechaCorta(lerp(MS[k], MS[Math.min(k + 1, N - 1)], fr));
   }
 
-  function posRegadera(k, extraRot) {
-    var x = lerp(CAN_HOME.x, CAN_POUR.x, k), y = lerp(CAN_HOME.y, CAN_POUR.y, k), r = lerp(CAN_HOME.r, CAN_POUR.r, k) + (extraRot || 0);
+  /* ---------- la regadera ---------- */
+  function aplicarRegadera(x, y, r) {
     can.setAttribute('transform', 'translate(' + f(x) + ' ' + f(y) + ') rotate(' + f(r) + ')');
     var rad = r * Math.PI / 180, c = Math.cos(rad), s = Math.sin(rad);
     return { x: x + CAN_TIP.x * c - CAN_TIP.y * s, y: y + CAN_TIP.x * s + CAN_TIP.y * c };
+  }
+  // Tiempos del riego en milisegundos. Para hacerlo más lento o más rápido basta con estirar estos números.
+  var T = { creceDe: 1900, creceA: 5800, riegaDe: 2000, riegaA: 5000, fin: 6800 };
+  // recorrido de la regadera: [tiempo, x, y, giro]
+  var KF = [[0, 161, 108, 0], [1100, 152, 99, -6], [1800, 149, 106, -28], [5000, 149, 106, -28], [5600, 153, 103, -9], [6800, 161, 108, 0]];
+  function poseRegadera(ts) {
+    var i = 0; while (i < KF.length - 2 && ts >= KF[i + 1][0]) i++;
+    var a = KF[i], b = KF[i + 1], u = eio(seg(ts, a[0], b[0]));
+    var x = lerp(a[1], b[1], u), y = lerp(a[2], b[2], u), r = lerp(a[3], b[3], u);
+    if (i === 0 || i === 4) y -= 9 * Math.sin(Math.PI * u);                        // sube en arco al ir y al volver
+    r += 7 * Math.sin(Math.PI * seg(ts, 0, 800));                                    // se echa un poco hacia atrás antes de avanzar
+    var env = Math.sqrt(Math.sin(Math.PI * seg(ts, 1800, 5000)));                    // mientras riega: va y viene sobre la planta
+    x += 6.5 * Math.sin((ts - 1800) / 900) * env; y += 1.4 * Math.sin(ts / 420) * env; r += -2.6 * Math.sin(ts / 650) * env;
+    r += 3.2 * Math.sin((ts - 5000) / 50) * (1 - seg(ts, 5000, 5600)) * (ts > 5000 ? 1 : 0);  // sacude las últimas gotas
+    return { x: x, y: y, r: r };
   }
   function soltarGota(tip) {
     for (var i = 0; i < gotas.length; i++) if (!gotas[i].vivo) {
@@ -468,37 +488,98 @@ noscript p { padding: 24px; text-align: center; }
     });
     salpicaduras.forEach(function (s) {
       if (!s.vivo) return;
-      s.edad += dt; var k = s.edad / .38;
+      s.edad += dt; var k = s.edad / .45;
       if (k >= 1) { s.vivo = false; s.el.setAttribute('visibility', 'hidden'); return; }
       s.el.setAttribute('cx', f(s.x)); s.el.setAttribute('cy', f(s.y)); s.el.setAttribute('rx', f(1 + 4.5 * k)); s.el.setAttribute('ry', f(.5 + 1.5 * k)); s.el.setAttribute('opacity', f(1 - k));
     });
   }
   function limpiarGotas() { gotas.concat(salpicaduras).forEach(function (g) { g.vivo = false; g.el.setAttribute('visibility', 'hidden'); }); }
 
-  // Riega: la regadera llega, se inclina, cae agua y la flor crece hasta la siguiente parada.
-  var T = { llega: 800, riegaDe: 700, riegaA: 3000, creceDe: 900, creceA: 3300, vuelve: 3800 };
+  /* ---------- el momento de cariño: brillitos, un aro de luz y, al final, corazones ---------- */
+  var STAR = 'M0 -4.2 C.6 -1.2 1.2 -.6 4.2 0 C1.2 .6 .6 1.2 0 4.2 C-.6 1.2 -1.2 .6 -4.2 0 C-1.2 -.6 -.6 -1.2 0 -4.2Z';
+  var HEART = 'M0 3.4 C-4.4 .2 -4.9 -3.1 -2.6 -4.2 C-1.1 -4.8 0 -3.8 0 -2.7 C0 -3.8 1.1 -4.8 2.6 -4.2 C4.9 -3.1 4.4 .2 0 3.4Z';
+  var brillos = $('brillos'), particulas = [], halo = null, haloT0 = 0, haloPos = null, rafFx = 0;
+  (function () {
+    var NS = 'http://www.w3.org/2000/svg';
+    halo = document.createElementNS(NS, 'circle'); halo.setAttribute('fill', 'none'); halo.setAttribute('stroke', '#E9B84A'); halo.setAttribute('stroke-width', '1.6'); halo.setAttribute('visibility', 'hidden'); brillos.appendChild(halo);
+    for (var i = 0; i < 26; i++) {
+      var corazon = i >= 14, el = document.createElementNS(NS, 'path');
+      el.setAttribute('d', corazon ? HEART : STAR); el.setAttribute('fill', corazon ? COLOR : '#F6D14A'); el.setAttribute('stroke', INK); el.setAttribute('stroke-width', '.6'); el.setAttribute('stroke-linejoin', 'round'); el.setAttribute('visibility', 'hidden');
+      brillos.appendChild(el); particulas.push({ el: el, corazon: corazon, activo: false });
+    }
+  })();
+  function puntaPlanta(t) {
+    var G = geom(t);
+    if (G.h > 1) return { x: G.top.x, y: G.top.y };
+    if (G.sprout > .05) return { x: G.tipX, y: G.tipY };
+    return { x: 100, y: LAY.gy - 4 };
+  }
+  function lanzar(corazon, n, pos, cada, vida, subida, ancho) {
+    var now = performance.now(), hechos = 0;
+    particulas.forEach(function (p) {
+      if (hechos >= n || p.corazon !== corazon || p.activo) return;
+      p.activo = true; p.t0 = now + hechos * cada + Math.random() * cada * .6; p.vida = vida * (.85 + Math.random() * .3);
+      p.x = pos.x + (Math.random() - .5) * ancho; p.y = pos.y + (corazon ? 0 : (Math.random() - .3) * 20); p.vy = -subida * (.7 + Math.random() * .6);
+      p.fase = Math.random() * 6.28; p.rot = (Math.random() - .5) * 50; p.esc = corazon ? .9 + Math.random() * .5 : .7 + Math.random() * .7; hechos++;
+    });
+  }
+  function celebrar(pos, esFinal) {
+    lanzar(false, 12, pos, 110, 1700, 14, 36);
+    if (esFinal) lanzar(true, 10, { x: pos.x, y: pos.y - 24 }, 300, 3400, 9, 50);
+    halo.setAttribute('cx', pos.x); halo.setAttribute('cy', pos.y); haloT0 = performance.now(); haloPos = pos;
+    var fe = $('fecha'); fe.classList.remove('late'); void fe.offsetWidth; fe.classList.add('late');
+    cancelAnimationFrame(rafFx); rafFx = requestAnimationFrame(loopFx);
+  }
+  function loopFx(now) {
+    var vivos = false;
+    particulas.forEach(function (p) {
+      if (!p.activo) return;
+      var edad = now - p.t0; vivos = true;
+      if (edad < 0) return;
+      var k = edad / p.vida;
+      if (k >= 1) { p.activo = false; p.el.setAttribute('visibility', 'hidden'); return; }
+      var x = p.x + Math.sin(p.fase + edad / 520) * (p.corazon ? 5 : 3), y = p.y + p.vy * edad / 1000;
+      var esc = p.esc * (p.corazon ? Math.min(1, k * 5) : Math.pow(Math.sin(Math.PI * k), .7));
+      p.el.setAttribute('transform', 'translate(' + f(x) + ' ' + f(y) + ') rotate(' + f(p.rot * (p.corazon ? Math.sin(edad / 600) : k * 2)) + ') scale(' + f(esc) + ')');
+      p.el.setAttribute('opacity', f(p.corazon ? 1 - seg(k, .65, 1) : 1)); p.el.setAttribute('visibility', 'visible');
+    });
+    var hk = (now - haloT0) / 1300;
+    if (hk >= 0 && hk < 1) { vivos = true; halo.setAttribute('r', f(5 + 30 * eo(hk))); halo.setAttribute('opacity', f(.7 * (1 - hk))); halo.setAttribute('visibility', 'visible'); }
+    else halo.setAttribute('visibility', 'hidden');
+    if (vivos) rafFx = requestAnimationFrame(loopFx);
+  }
+  function limpiarFx() {
+    cancelAnimationFrame(rafFx);
+    particulas.forEach(function (p) { p.activo = false; p.el.setAttribute('visibility', 'hidden'); }); halo.setAttribute('visibility', 'hidden');
+  }
+
+  // Riega: la regadera llega, se inclina, se mece sobre la planta mientras cae el agua y la flor crece
+  // hasta la siguiente parada. Al llegar hay un momento de cariño.
+  var eis = function (x) { return .5 - .5 * Math.cos(Math.PI * x); };
   function correr(desde, hasta, conRegadera, dur) {
     return new Promise(function (resolver) {
       cancelAnimationFrame(raf);
-      var con = conRegadera && !reduce, total = con ? T.vuelve : (dur || (reduce ? 500 : 1000)), t0 = null, ultimo = 0, acumulado = 0;
+      var con = conRegadera && !reduce, total = con ? T.fin : (dur || (reduce ? 500 : 1000)), t0 = null, ultimo = 0, acumulado = 0, celebrado = false;
       if (con) $('escena').classList.add('regando');
       (function paso(now) {
         if (t0 === null) { t0 = now; ultimo = now; }
         var ts = now - t0, dt = Math.min(.05, (now - ultimo) / 1000); ultimo = now;
-        var crece = con ? eio(seg(ts, T.creceDe, T.creceA)) : eio(seg(ts, 0, total));
-        var humedad = humedadBase(lerp(desde, hasta, crece));
+        var crece = con ? eis(seg(ts, T.creceDe, T.creceA)) : eio(seg(ts, 0, total));
+        var humedad = humedadBase(lerp(desde, hasta, crece)), sway = null;
         if (con) {
-          var k = eio(seg(ts, 0, T.llega)) * (1 - eio(seg(ts, T.riegaA, T.vuelve)));
-          var vaiven = ts > T.riegaDe && ts < T.riegaA ? 1.3 * Math.sin(ts / 170) : 0;
-          var tip = posRegadera(k, vaiven);
-          if (ts > T.riegaDe && ts < T.riegaA) { acumulado += dt * 36; while (acumulado >= 1) { soltarGota(tip); acumulado -= 1; } }
+          var po = poseRegadera(ts), tip = aplicarRegadera(po.x, po.y, po.r);
+          var tasa = po.r < -14 && ts < T.riegaA + 600 ? (ts < T.riegaA ? 26 * (1 - .8 * seg(ts, 4300, 5000)) : 9) : 0;
+          acumulado += dt * tasa; while (acumulado >= 1) { soltarGota(tip); acumulado -= 1; }
           moverGotas(dt);
-          humedad += .5 * seg(ts, T.riegaDe, T.riegaDe + 800) * (1 - seg(ts, T.riegaA, T.vuelve));
+          humedad += .5 * seg(ts, T.riegaDe, T.riegaDe + 1000) * (1 - seg(ts, 5600, T.fin));
+          var env = seg(ts, T.creceDe, T.creceDe + 700) * (1 - seg(ts, T.creceA, T.creceA + 900));
+          sway = { a: (.8 + .9 * Math.sin(ts / 520)) * env, s: 1 + .022 * Math.sin(Math.PI * seg(ts, T.creceA - 200, T.creceA + 600)) };
+          if (!celebrado && ts >= T.creceA) { celebrado = true; celebrar(puntaPlanta(hasta), hasta >= 1 - 1e-6); }
         }
-        pintar(lerp(desde, hasta, crece), clamp(humedad, 0, 1));
+        pintar(lerp(desde, hasta, crece), clamp(humedad, 0, 1), sway);
         if (ts < total) raf = requestAnimationFrame(paso);
         else {
-          if (con) { posRegadera(0, 0); limpiarGotas(); $('escena').classList.remove('regando'); }
+          if (con) { aplicarRegadera(KF[0][1], KF[0][2], 0); limpiarGotas(); $('escena').classList.remove('regando'); }
           pintar(hasta, humedadBase(hasta)); resolver();
         }
       })(performance.now());
@@ -537,17 +618,17 @@ noscript p { padding: 24px; text-align: center; }
   function ocultarTarjeta() { $('tarjeta').classList.add('oculta'); }
   function ir(i) {
     if (ocupado || i === idx || i > alcance) return;
-    ocupado = true; actualizarControles(); ocultarTarjeta();
+    ocupado = true; limpiarFx(); actualizarControles(); ocultarTarjeta();
     correr(tAhora, tDe(i), false, 900).then(function () { idx = i; ocupado = false; mostrarTarjeta(idx); actualizarControles(); });
   }
   function regar() {
     if (ocupado) return;
     if (idx >= N - 1) {
-      ocupado = true; actualizarControles(); ocultarTarjeta();
+      ocupado = true; limpiarFx(); actualizarControles(); ocultarTarjeta();
       correr(tAhora, 0, false, 1600).then(function () { idx = 0; ocupado = false; mostrarTarjeta(0); actualizarControles(); });
       return;
     }
-    ocupado = true; actualizarControles(); ocultarTarjeta();
+    ocupado = true; limpiarFx(); actualizarControles(); ocultarTarjeta();
     var sig = idx + 1;
     correr(tDe(idx), tDe(sig), true).then(function () {
       idx = sig; alcance = Math.max(alcance, idx); ocupado = false; mostrarTarjeta(idx); actualizarControles();
