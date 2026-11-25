@@ -81,11 +81,22 @@ h1, h2, p { margin: 0; }
 .visor { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(30, 27, 22, .86); cursor: zoom-out; }
 .visor[hidden] { display: none; }
 .visor img { max-width: 100%; max-height: 100%; border: 6px solid #fff; border-radius: 3px; }
-.flota { animation: flota 4.6s ease-in-out infinite; }
+.flota { animation: flota 4.2s ease-in-out infinite; }
 .regando .flota { animation: none; }
-@keyframes flota { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.8px); } }
-@media (prefers-reduced-motion: reduce) { .flota, .fecha.late { animation: none; } .tarjeta { transition: none; } }
+@keyframes flota { 0%, 100% { transform: translate(0, 0) rotate(0deg); } 50% { transform: translate(-1px, -3px) rotate(-2.2deg); } }
+@media (prefers-reduced-motion: reduce) { .fecha.late { animation: none; } .tarjeta { transition: none; } }
 noscript p { padding: 24px; text-align: center; }
+.musica { position: fixed; top: max(12px, env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); z-index: 15; width: 42px; height: 42px; padding: 0; display: grid; place-items: center; border: 1.7px solid var(--tinta); border-radius: 50%; background: var(--agua); box-shadow: 2px 2px 0 var(--tinta); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.musica[hidden] { display: none; }
+.musica svg { width: 22px; height: 22px; fill: none; stroke: var(--tinta); stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.musica:focus-visible { outline: 2px solid var(--tinta); outline-offset: 3px; }
+.portada { position: fixed; inset: 0; z-index: 25; display: grid; place-items: center; padding: 24px; text-align: center; background-color: var(--papel); background-image: inherit; transition: opacity .9s ease; }
+.portada[hidden] { display: none; }
+.portada.fuera { opacity: 0; pointer-events: none; }
+.portada-in { max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.portada-in svg { width: 120px; height: 120px; }
+.portada-in h1 { font: 600 clamp(28px, 8vw, 36px)/1.15 var(--serif); }
+.portada-in p { color: var(--cuerpo); }
 </style>
 </head>
 <body>
@@ -113,32 +124,80 @@ noscript p { padding: 24px; text-align: center; }
   </div>
 </main>
 <div class="visor" id="visor" hidden><img id="visor-img" alt=""></div>
+<button type="button" class="musica" id="musica" hidden aria-label="Poner música" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"></svg></button>
+<div class="portada" id="portada" hidden>
+  <div class="portada-in">
+    <svg id="portada-flor" viewBox="-40 -40 80 80" aria-hidden="true"></svg>
+    <h1 id="portada-titulo"></h1>
+    <p>Este regalo tiene música. Sube el volumen y toca para empezar.</p>
+    <button type="button" class="regar" id="empezar"><span>Empezar</span></button>
+  </div>
+</div>
 
+<script type="application/json" id="contenido">{
+ "titulo": "Una gerbera para ti",
+ "color": "#E0343C",
+ "ritmo": 1,
+ "paradas": [
+  {
+   "fecha": "2026-06-25",
+   "titulo": "La semilla",
+   "texto": "Todo empezó con una semilla. Riégala para verla crecer.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-07-05",
+   "titulo": "Las raíces",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-07-25",
+   "titulo": "El brote",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-08-20",
+   "titulo": "Las hojas",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-09-15",
+   "titulo": "El tallo",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-10-10",
+   "titulo": "El botón",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-11-03",
+   "titulo": "Abriendo",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-11-25",
+   "titulo": "La flor",
+   "texto": "Y hoy florece.",
+   "foto": ""
+  }
+ ]
+}</script>
 <script>
 (function () {
   'use strict';
 
   /* =====================================================================
-     CONTENIDO DEL REGALO
-     Cada parada es un momento: la flor se detiene ahí y aparece la tarjeta.
-     Se puede agregar o quitar paradas; la flor reparte su crecimiento sola.
-     ← Los textos y las fechas del medio son de ejemplo; hay que reemplazarlos.
-     foto: ruta de una imagen (por ejemplo 'fotos/01.jpg') o vacío para no poner.
+     El contenido del regalo (momentos, textos, fotos, color) vive en el bloque
+     <script type="application/json" id="contenido"> de más abajo en este archivo.
+     Se edita desde editor.html, o a mano respetando ese formato.
      ===================================================================== */
-  var REGALO = {
-    titulo: 'Una gerbera para ti',
-    color: '#E0343C',
-    paradas: [
-      { fecha: '2026-06-25', titulo: 'La semilla', texto: 'Todo empezó con una semilla. Riégala para verla crecer.', foto: '' },
-      { fecha: '2026-07-05', titulo: 'Las raíces', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-07-25', titulo: 'El brote', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-08-20', titulo: 'Las hojas', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-09-15', titulo: 'El tallo', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-10-10', titulo: 'El botón', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-11-03', titulo: 'Abriendo', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-11-25', titulo: 'La flor', texto: 'Y hoy florece.', foto: '' }
-    ]
-  };
 
   /* ---------- utilidades ---------- */
   var clamp = function (x, a, b) { return Math.min(b === undefined ? 1 : b, Math.max(a === undefined ? 0 : a, x)); };
@@ -161,7 +220,32 @@ noscript p { padding: 24px; text-align: center; }
   function fechaCorta(ms) { var d = new Date(ms); return p2(d.getUTCDate()) + '/' + p2(d.getUTCMonth() + 1) + '/' + String(d.getUTCFullYear()).slice(2); }
   function fechaLarga(ms) { var d = new Date(ms); return d.getUTCDate() + ' de ' + MESES[d.getUTCMonth()] + ' de ' + d.getUTCFullYear(); }
 
-  var PAPER = '#FBF6EC', INK = '#2A2823', COLOR = REGALO.color;
+  function fotoSegura(s) {
+    s = String(s || '');
+    return /^(data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+|\w[\w .\/-]*\.(jpe?g|png|webp|gif))$/i.test(s) ? s : '';
+  }
+  function audioSeguro(s) { s = String(s || ''); return /^data:audio\/[\w.+-]+;base64,[A-Za-z0-9+\/=]+$/i.test(s) ? s : ''; }
+  function audioRuta(s) { s = String(s || ''); return /^\w[\w .\/-]*\.(mp3|m4a|aac|ogg|wav|webm)$/i.test(s) ? s : ''; }
+  function normalizar(c) {
+    c = c && typeof c === 'object' ? c : {};
+    var ps = (Array.isArray(c.paradas) ? c.paradas : []).slice(0, 12).map(function (p) {
+      p = p || {};
+      return { fecha: /^\d{4}-\d{2}-\d{2}$/.test(p.fecha) ? p.fecha : '2026-11-25', titulo: String(p.titulo || '').slice(0, 80), texto: String(p.texto || '').slice(0, 600), foto: fotoSegura(p.foto) };
+    });
+    while (ps.length < 2) ps.push({ fecha: '2026-11-25', titulo: ps.length ? 'La flor' : 'La semilla', texto: '', foto: '' });
+    return {
+      titulo: String(c.titulo || '').slice(0, 80) || 'Una gerbera para ti',
+      color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : '#E0343C',
+      ritmo: clamp(+c.ritmo || 1, .5, 2),
+      musica: { nombre: String((c.musica && c.musica.nombre) || '').slice(0, 80), data: audioSeguro(c.musica && c.musica.data), src: audioRuta(c.musica && c.musica.src) },
+      paradas: ps
+    };
+  }
+  function leerContenido() {
+    try { return normalizar(JSON.parse($('contenido').textContent)); } catch (e) { return normalizar(null); }
+  }
+
+  var PAPER = '#FBF6EC', INK = '#2A2823', COLOR = '#E0343C', RITMO = 1;
   var LAY = { gy: 158, seedY: 182, H: 92, hs: .82, ls: .86 };
 
   /* ---------- geometría de la gerbera ---------- */
@@ -410,7 +494,7 @@ noscript p { padding: 24px; text-align: center; }
   var CAN_HOME = { x: 161, y: 108, r: 0 }, CAN_TIP = { x: -40, y: -12 };
 
   /* ---------- estado y animación ---------- */
-  var P = REGALO.paradas, N = P.length, MS = P.map(function (p) { return fechaMs(p.fecha); });
+  var R = null, P = [], N = 0, MS = [];
   var tDe = function (i) { return N > 1 ? i / (N - 1) : 1; };
   var idx = 0, alcance = 0, tAhora = 0, ocupado = false, raf = 0;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -559,11 +643,11 @@ noscript p { padding: 24px; text-align: center; }
   function correr(desde, hasta, conRegadera, dur) {
     return new Promise(function (resolver) {
       cancelAnimationFrame(raf);
-      var con = conRegadera && !reduce, total = con ? T.fin : (dur || (reduce ? 500 : 1000)), t0 = null, ultimo = 0, acumulado = 0, celebrado = false;
+      var con = conRegadera, total = con ? T.fin : (dur || (reduce ? 500 : 1000)), t0 = null, ultimo = 0, acumulado = 0, celebrado = false;
       if (con) $('escena').classList.add('regando');
       (function paso(now) {
         if (t0 === null) { t0 = now; ultimo = now; }
-        var ts = now - t0, dt = Math.min(.05, (now - ultimo) / 1000); ultimo = now;
+        var tr = now - t0, ts = con ? tr / RITMO : tr, dt = Math.min(.05, (now - ultimo) / 1000); ultimo = now;
         var crece = con ? eis(seg(ts, T.creceDe, T.creceA)) : eio(seg(ts, 0, total));
         var humedad = humedadBase(lerp(desde, hasta, crece)), sway = null;
         if (con) {
@@ -573,7 +657,7 @@ noscript p { padding: 24px; text-align: center; }
           moverGotas(dt);
           humedad += .5 * seg(ts, T.riegaDe, T.riegaDe + 1000) * (1 - seg(ts, 5600, T.fin));
           var env = seg(ts, T.creceDe, T.creceDe + 700) * (1 - seg(ts, T.creceA, T.creceA + 900));
-          sway = { a: (.8 + .9 * Math.sin(ts / 520)) * env, s: 1 + .022 * Math.sin(Math.PI * seg(ts, T.creceA - 200, T.creceA + 600)) };
+          if (!reduce) sway = { a: (.8 + .9 * Math.sin(ts / 520)) * env, s: 1 + .022 * Math.sin(Math.PI * seg(ts, T.creceA - 200, T.creceA + 600)) };
           if (!celebrado && ts >= T.creceA) { celebrado = true; celebrar(puntaPlanta(hasta), hasta >= 1 - 1e-6); }
         }
         pintar(lerp(desde, hasta, crece), clamp(humedad, 0, 1), sway);
@@ -608,12 +692,15 @@ noscript p { padding: 24px; text-align: center; }
       b.disabled = ocupado || i > alcance; if (i === idx) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
     });
   }
-  P.forEach(function (p, i) {
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'punto';
-    b.setAttribute('aria-label', 'Momento ' + (i + 1) + ': ' + fechaCorta(MS[i]) + ', ' + (p.titulo || ''));
-    b.addEventListener('click', function () { ir(i); });
-    $('puntos').appendChild(b);
-  });
+  function construirPuntos() {
+    $('puntos').innerHTML = '';
+    P.forEach(function (p, i) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'punto';
+      b.setAttribute('aria-label', 'Momento ' + (i + 1) + ': ' + fechaCorta(MS[i]) + ', ' + (p.titulo || ''));
+      b.addEventListener('click', function () { ir(i); });
+      $('puntos').appendChild(b);
+    });
+  }
 
   function ocultarTarjeta() { $('tarjeta').classList.add('oculta'); }
   function ir(i) {
@@ -639,8 +726,74 @@ noscript p { padding: 24px; text-align: center; }
   visor.addEventListener('click', function () { visor.hidden = true; });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') visor.hidden = true; });
 
-  document.title = REGALO.titulo || document.title;
-  pintar(0, humedadBase(0)); mostrarTarjeta(0); actualizarControles();
+  /* ---------- música ---------- */
+  var audio = null, audioSrc = '', fadeT = 0, btnMusica = $('musica');
+  var ICO_SUENA = '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>';
+  var ICO_MUDA = '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>';
+  function pintarMusica() {
+    var suena = !!(audio && !audio.paused);
+    btnMusica.querySelector('svg').innerHTML = suena ? ICO_SUENA : ICO_MUDA;
+    btnMusica.setAttribute('aria-pressed', String(suena)); btnMusica.setAttribute('aria-label', suena ? 'Silenciar la música' : 'Poner la música');
+  }
+  function ponerAudio(src) {
+    clearInterval(fadeT); if (audio) audio.pause();
+    audio = null; audioSrc = src || ''; btnMusica.hidden = !audioSrc;
+    if (audioSrc) {
+      audio = new Audio(audioSrc); audio.loop = true; audio.preload = 'auto';
+      audio.addEventListener('play', pintarMusica); audio.addEventListener('pause', pintarMusica);
+    }
+    pintarMusica();
+  }
+  function tocar() {   // entra suave, de 0 a volumen normal
+    if (!audio) return;
+    clearInterval(fadeT); audio.volume = 0;
+    var p = audio.play(); if (p && p.catch) p.catch(function () {});
+    var v = 0; fadeT = setInterval(function () { v += .05; audio.volume = Math.min(.75, v); if (v >= .75) clearInterval(fadeT); }, 110);
+    pintarMusica();
+  }
+  btnMusica.addEventListener('click', function () { if (!audio) return; if (audio.paused) tocar(); else { clearInterval(fadeT); audio.pause(); } });
+
+  // Portada con "Empezar": el navegador solo deja sonar la música después de un toque.
+  function mostrarPortada() {
+    var fl = '', c = COLOR;
+    for (var i = 0; i < 12; i++) fl += '<path transform="rotate(' + (i * 30) + ')" d="' + petalPath(30, 5, i + 40) + '" fill="' + (i % 2 ? shade(c, -.1) : c) + '" stroke="' + INK + '" stroke-width="1"/>';
+    fl += '<circle r="8" fill="' + ORO + '" stroke="' + INK + '" stroke-width="1.1"/>';
+    $('portada-flor').innerHTML = fl; $('portada-titulo').textContent = R.titulo;
+    var pt = $('portada'); pt.classList.remove('fuera'); pt.hidden = false;
+    document.querySelector('.regalo').setAttribute('inert', '');
+    $('empezar').focus();
+  }
+  $('empezar').addEventListener('click', function () {
+    tocar(); var pt = $('portada'); pt.classList.add('fuera');
+    document.querySelector('.regalo').removeAttribute('inert');
+    setTimeout(function () { pt.hidden = true; }, 950);
+  });
+
+  // Carga un contenido (el del archivo o el que manda el panel) y deja el regalo en la parada indicada.
+  function iniciar(contenido, opts) {
+    opts = opts || {};
+    cancelAnimationFrame(raf); limpiarFx(); limpiarGotas(); aplicarRegadera(KF[0][1], KF[0][2], 0); $('escena').classList.remove('regando');
+    R = normalizar(contenido); P = R.paradas; N = P.length;
+    MS = P.map(function (p) { return fechaMs(p.fecha); });
+    COLOR = R.color; RITMO = R.ritmo;
+    particulas.forEach(function (p) { if (p.corazon) p.el.setAttribute('fill', COLOR); });
+    document.title = R.titulo; visor.hidden = true; ocupado = false;
+    var i = clamp(parseInt(opts.ir, 10) || 0, 0, N - 1);
+    idx = i; alcance = opts.libre ? N - 1 : i;
+    construirPuntos();
+    pintar(tDe(i), humedadBase(tDe(i))); mostrarTarjeta(i); actualizarControles();
+  }
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (e.source !== window.parent || !d || d.tipo !== 'gerbera-contenido') return;
+    iniciar(d.datos, { ir: d.ir, libre: true });
+    if (d.audioCambia) ponerAudio(d.audio);
+    $('portada').hidden = true; document.querySelector('.regalo').removeAttribute('inert');
+  });
+  iniciar(leerContenido());
+  ponerAudio(R.musica.data || R.musica.src);
+  if (audioSrc && window.parent === window) mostrarPortada();
+  if (window.parent !== window) window.parent.postMessage({ tipo: 'gerbera-listo' }, '*');
 })();
 </script>
 </body>
