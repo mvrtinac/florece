@@ -195,7 +195,7 @@ noscript p { padding: 24px; text-align: center; }
 
   /* =====================================================================
      El contenido del regalo (momentos, textos, fotos, color) vive en el bloque
-     <script type="application/json" id="contenido"> de más abajo en este archivo.
+     bloque de datos con id «contenido» (justo antes de este script).
      Se edita desde editor.html, o a mano respetando ese formato.
      ===================================================================== */
 
@@ -603,13 +603,13 @@ noscript p { padding: 24px; text-align: center; }
     particulas.forEach(function (p) {
       if (hechos >= n || p.corazon !== corazon || p.activo) return;
       p.activo = true; p.t0 = now + hechos * cada + Math.random() * cada * .6; p.vida = vida * (.85 + Math.random() * .3);
-      p.x = pos.x + (Math.random() - .5) * ancho; p.y = pos.y + (corazon ? 0 : (Math.random() - .3) * 20); p.vy = -subida * (.7 + Math.random() * .6);
+      p.x = pos.x + (corazon ? (Math.random() < .5 ? -1 : 1) * (22 + Math.random() * 16) : (Math.random() - .5) * ancho); p.y = pos.y + (corazon ? 0 : (Math.random() - .3) * 20); p.vy = -subida * (.7 + Math.random() * .6);
       p.fase = Math.random() * 6.28; p.rot = (Math.random() - .5) * 50; p.esc = corazon ? .9 + Math.random() * .5 : .7 + Math.random() * .7; hechos++;
     });
   }
   function celebrar(pos, esFinal) {
     lanzar(false, 12, pos, 110, 1700, 14, 36);
-    if (esFinal) lanzar(true, 10, { x: pos.x, y: pos.y - 24 }, 300, 3400, 9, 50);
+    if (esFinal) lanzar(true, 10, { x: pos.x, y: pos.y - 6 }, 300, 3400, 9, 50);
     halo.setAttribute('cx', pos.x); halo.setAttribute('cy', pos.y); haloT0 = performance.now(); haloPos = pos;
     var fe = $('fecha'); fe.classList.remove('late'); void fe.offsetWidth; fe.classList.add('late');
     cancelAnimationFrame(rafFx); rafFx = requestAnimationFrame(loopFx);
@@ -727,7 +727,17 @@ noscript p { padding: 24px; text-align: center; }
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') visor.hidden = true; });
 
   /* ---------- música ---------- */
-  var audio = null, audioSrc = '', fadeT = 0, btnMusica = $('musica');
+  var audio = null, audioSrc = '', audioUrl = '', fadeT = 0, btnMusica = $('musica');
+  // Una canción grande incrustada funciona mejor como archivo en memoria (blob) que como texto largo.
+  function aBlobUrl(src) {
+    var m = /^data:([^;,]+);base64,/.exec(src);
+    if (!m) return src;
+    try {
+      var bin = atob(src.slice(m[0].length)), n = bin.length, arr = new Uint8Array(n);
+      for (var i = 0; i < n; i++) arr[i] = bin.charCodeAt(i);
+      return URL.createObjectURL(new Blob([arr], { type: m[1] }));
+    } catch (e) { return src; }
+  }
   var ICO_SUENA = '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>';
   var ICO_MUDA = '<path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9.5l5 5M22 9.5l-5 5"/>';
   function pintarMusica() {
@@ -737,9 +747,10 @@ noscript p { padding: 24px; text-align: center; }
   }
   function ponerAudio(src) {
     clearInterval(fadeT); if (audio) audio.pause();
-    audio = null; audioSrc = src || ''; btnMusica.hidden = !audioSrc;
+    if (audioUrl.indexOf('blob:') === 0) URL.revokeObjectURL(audioUrl);
+    audio = null; audioSrc = src || ''; audioUrl = ''; btnMusica.hidden = !audioSrc;
     if (audioSrc) {
-      audio = new Audio(audioSrc); audio.loop = true; audio.preload = 'auto';
+      audioUrl = aBlobUrl(audioSrc); audio = new Audio(audioUrl); audio.loop = true; audio.preload = 'auto';
       audio.addEventListener('play', pintarMusica); audio.addEventListener('pause', pintarMusica);
     }
     pintarMusica();
