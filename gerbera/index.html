@@ -114,31 +114,70 @@ noscript p { padding: 24px; text-align: center; }
 </main>
 <div class="visor" id="visor" hidden><img id="visor-img" alt=""></div>
 
+<script type="application/json" id="contenido">{
+ "titulo": "Una gerbera para ti",
+ "color": "#E0343C",
+ "ritmo": 1,
+ "paradas": [
+  {
+   "fecha": "2026-06-25",
+   "titulo": "La semilla",
+   "texto": "Todo empezó con una semilla. Riégala para verla crecer.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-07-05",
+   "titulo": "Las raíces",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-07-25",
+   "titulo": "El brote",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-08-20",
+   "titulo": "Las hojas",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-09-15",
+   "titulo": "El tallo",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-10-10",
+   "titulo": "El botón",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-11-03",
+   "titulo": "Abriendo",
+   "texto": "Aquí va lo que quieras contar de este día.",
+   "foto": ""
+  },
+  {
+   "fecha": "2026-11-25",
+   "titulo": "La flor",
+   "texto": "Y hoy florece.",
+   "foto": ""
+  }
+ ]
+}</script>
 <script>
 (function () {
   'use strict';
 
   /* =====================================================================
-     CONTENIDO DEL REGALO
-     Cada parada es un momento: la flor se detiene ahí y aparece la tarjeta.
-     Se puede agregar o quitar paradas; la flor reparte su crecimiento sola.
-     ← Los textos y las fechas del medio son de ejemplo; hay que reemplazarlos.
-     foto: ruta de una imagen (por ejemplo 'fotos/01.jpg') o vacío para no poner.
+     El contenido del regalo (momentos, textos, fotos, color) vive en el bloque
+     <script type="application/json" id="contenido"> de más abajo en este archivo.
+     Se edita desde editor.html, o a mano respetando ese formato.
      ===================================================================== */
-  var REGALO = {
-    titulo: 'Una gerbera para ti',
-    color: '#E0343C',
-    paradas: [
-      { fecha: '2026-06-25', titulo: 'La semilla', texto: 'Todo empezó con una semilla. Riégala para verla crecer.', foto: '' },
-      { fecha: '2026-07-05', titulo: 'Las raíces', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-07-25', titulo: 'El brote', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-08-20', titulo: 'Las hojas', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-09-15', titulo: 'El tallo', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-10-10', titulo: 'El botón', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-11-03', titulo: 'Abriendo', texto: 'Aquí va lo que quieras contar de este día.', foto: '' },
-      { fecha: '2026-11-25', titulo: 'La flor', texto: 'Y hoy florece.', foto: '' }
-    ]
-  };
 
   /* ---------- utilidades ---------- */
   var clamp = function (x, a, b) { return Math.min(b === undefined ? 1 : b, Math.max(a === undefined ? 0 : a, x)); };
@@ -161,7 +200,29 @@ noscript p { padding: 24px; text-align: center; }
   function fechaCorta(ms) { var d = new Date(ms); return p2(d.getUTCDate()) + '/' + p2(d.getUTCMonth() + 1) + '/' + String(d.getUTCFullYear()).slice(2); }
   function fechaLarga(ms) { var d = new Date(ms); return d.getUTCDate() + ' de ' + MESES[d.getUTCMonth()] + ' de ' + d.getUTCFullYear(); }
 
-  var PAPER = '#FBF6EC', INK = '#2A2823', COLOR = REGALO.color;
+  function fotoSegura(s) {
+    s = String(s || '');
+    return /^(data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+\/=]+|\w[\w .\/-]*\.(jpe?g|png|webp|gif))$/i.test(s) ? s : '';
+  }
+  function normalizar(c) {
+    c = c && typeof c === 'object' ? c : {};
+    var ps = (Array.isArray(c.paradas) ? c.paradas : []).slice(0, 12).map(function (p) {
+      p = p || {};
+      return { fecha: /^\d{4}-\d{2}-\d{2}$/.test(p.fecha) ? p.fecha : '2026-11-25', titulo: String(p.titulo || '').slice(0, 80), texto: String(p.texto || '').slice(0, 600), foto: fotoSegura(p.foto) };
+    });
+    while (ps.length < 2) ps.push({ fecha: '2026-11-25', titulo: ps.length ? 'La flor' : 'La semilla', texto: '', foto: '' });
+    return {
+      titulo: String(c.titulo || '').slice(0, 80) || 'Una gerbera para ti',
+      color: /^#[0-9a-f]{6}$/i.test(c.color) ? c.color : '#E0343C',
+      ritmo: clamp(+c.ritmo || 1, .5, 2),
+      paradas: ps
+    };
+  }
+  function leerContenido() {
+    try { return normalizar(JSON.parse($('contenido').textContent)); } catch (e) { return normalizar(null); }
+  }
+
+  var PAPER = '#FBF6EC', INK = '#2A2823', COLOR = '#E0343C', RITMO = 1;
   var LAY = { gy: 158, seedY: 182, H: 92, hs: .82, ls: .86 };
 
   /* ---------- geometría de la gerbera ---------- */
@@ -410,7 +471,7 @@ noscript p { padding: 24px; text-align: center; }
   var CAN_HOME = { x: 161, y: 108, r: 0 }, CAN_TIP = { x: -40, y: -12 };
 
   /* ---------- estado y animación ---------- */
-  var P = REGALO.paradas, N = P.length, MS = P.map(function (p) { return fechaMs(p.fecha); });
+  var R = null, P = [], N = 0, MS = [];
   var tDe = function (i) { return N > 1 ? i / (N - 1) : 1; };
   var idx = 0, alcance = 0, tAhora = 0, ocupado = false, raf = 0;
   var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -563,7 +624,7 @@ noscript p { padding: 24px; text-align: center; }
       if (con) $('escena').classList.add('regando');
       (function paso(now) {
         if (t0 === null) { t0 = now; ultimo = now; }
-        var ts = now - t0, dt = Math.min(.05, (now - ultimo) / 1000); ultimo = now;
+        var tr = now - t0, ts = con ? tr / RITMO : tr, dt = Math.min(.05, (now - ultimo) / 1000); ultimo = now;
         var crece = con ? eis(seg(ts, T.creceDe, T.creceA)) : eio(seg(ts, 0, total));
         var humedad = humedadBase(lerp(desde, hasta, crece)), sway = null;
         if (con) {
@@ -608,12 +669,15 @@ noscript p { padding: 24px; text-align: center; }
       b.disabled = ocupado || i > alcance; if (i === idx) b.setAttribute('aria-current', 'step'); else b.removeAttribute('aria-current');
     });
   }
-  P.forEach(function (p, i) {
-    var b = document.createElement('button'); b.type = 'button'; b.className = 'punto';
-    b.setAttribute('aria-label', 'Momento ' + (i + 1) + ': ' + fechaCorta(MS[i]) + ', ' + (p.titulo || ''));
-    b.addEventListener('click', function () { ir(i); });
-    $('puntos').appendChild(b);
-  });
+  function construirPuntos() {
+    $('puntos').innerHTML = '';
+    P.forEach(function (p, i) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'punto';
+      b.setAttribute('aria-label', 'Momento ' + (i + 1) + ': ' + fechaCorta(MS[i]) + ', ' + (p.titulo || ''));
+      b.addEventListener('click', function () { ir(i); });
+      $('puntos').appendChild(b);
+    });
+  }
 
   function ocultarTarjeta() { $('tarjeta').classList.add('oculta'); }
   function ir(i) {
@@ -639,8 +703,27 @@ noscript p { padding: 24px; text-align: center; }
   visor.addEventListener('click', function () { visor.hidden = true; });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') visor.hidden = true; });
 
-  document.title = REGALO.titulo || document.title;
-  pintar(0, humedadBase(0)); mostrarTarjeta(0); actualizarControles();
+  // Carga un contenido (el del archivo o el que manda el panel) y deja el regalo en la parada indicada.
+  function iniciar(contenido, opts) {
+    opts = opts || {};
+    cancelAnimationFrame(raf); limpiarFx(); limpiarGotas(); aplicarRegadera(KF[0][1], KF[0][2], 0); $('escena').classList.remove('regando');
+    R = normalizar(contenido); P = R.paradas; N = P.length;
+    MS = P.map(function (p) { return fechaMs(p.fecha); });
+    COLOR = R.color; RITMO = R.ritmo;
+    particulas.forEach(function (p) { if (p.corazon) p.el.setAttribute('fill', COLOR); });
+    document.title = R.titulo; visor.hidden = true; ocupado = false;
+    var i = clamp(parseInt(opts.ir, 10) || 0, 0, N - 1);
+    idx = i; alcance = opts.libre ? N - 1 : i;
+    construirPuntos();
+    pintar(tDe(i), humedadBase(tDe(i))); mostrarTarjeta(i); actualizarControles();
+  }
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (e.source !== window.parent || !d || d.tipo !== 'gerbera-contenido') return;
+    iniciar(d.datos, { ir: d.ir, libre: true });
+  });
+  iniciar(leerContenido());
+  if (window.parent !== window) window.parent.postMessage({ tipo: 'gerbera-listo' }, '*');
 })();
 </script>
 </body>
